@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Records</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Attendance Records</h1>
+    </header>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="register.html">Register Student</a>
+        <a href="attendance.html">Mark Attendance</a>
+        <a href="records.html">View Records</a>
+    </nav>
+
+    <div class="container">
+        <div class="form-group">
+            <label for="date">Select Date:</label>
+            <input type="date" id="date">
+            <button id="fetch-btn" style="margin-top: 10px; width: auto;">Fetch Records</button>
+        </div>
+
+        <div id="status"></div>
+
+        <table id="records-table">
+            <thead>
+                <tr>
+                    <th>Class</th>
+                    <th>Section</th>
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        const dateInput = document.getElementById('date');
+        const fetchBtn = document.getElementById('fetch-btn');
+        const tableBody = document.querySelector('#records-table tbody');
+
+        // Set default date to today
+        dateInput.valueAsDate = new Date();
+
+        fetchBtn.addEventListener('click', fetchRecords);
+
+        async function fetchRecords() {
+            const date = dateInput.value;
+            if (!date) return;
+
+            try {
+                const response = await fetch(`http://localhost:5000/attendance?date=${date}`);
+                const result = await response.json();
+
+                tableBody.innerHTML = '';
+
+                if (result.records && result.records.length > 0) {
+                    result.records.forEach(record => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${record.Class}</td>
+                            <td>${record.Section}</td>
+                            <td>${record.Roll}</td>
+                            <td>${record.Name}</td>
+                            <td>${record.Time}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    showStatus(`Loaded ${result.records.length} records.`, 'success');
+                } else {
+                    showStatus('No records found for this date.', 'error');
+                }
+            } catch (error) {
+                showStatus('Error fetching records.', 'error');
+                console.error(error);
+            }
+        }
+
+        // Fetch initially
+        fetchRecords();
+    </script>
+</body>
+</html>

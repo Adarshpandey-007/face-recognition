@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Student</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Register Student</h1>
+    </header>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="register.html">Register Student</a>
+        <a href="attendance.html">Mark Attendance</a>
+        <a href="records.html">View Records</a>
+    </nav>
+
+    <div class="container">
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" required>
+        </div>
+        <div class="form-group">
+            <label for="class">Class:</label>
+            <input type="text" id="class" required>
+        </div>
+        <div class="form-group">
+            <label for="section">Section:</label>
+            <input type="text" id="section" required>
+        </div>
+        <div class="form-group">
+            <label for="roll">Roll Number:</label>
+            <input type="number" id="roll" required>
+        </div>
+
+        <div class="video-container">
+            <video id="video" width="320" height="240" autoplay></video>
+            <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+            <button id="capture-btn" style="margin-top: 10px; width: auto;">Capture Photo</button>
+        </div>
+
+        <div id="preview-container" style="display:none; text-align: center;">
+            <img id="preview-img" src="" alt="Captured Face" style="max-width: 100%; border: 2px solid #333; border-radius: 4px;">
+            <button id="retake-btn" style="margin-top: 10px; width: auto; background-color: #6c757d;">Retake</button>
+        </div>
+
+        <button id="register-btn" style="margin-top: 20px;">Register Student</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        initCamera();
+        
+        const captureBtn = document.getElementById('capture-btn');
+        const retakeBtn = document.getElementById('retake-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview-img');
+        let capturedImage = null;
+
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 320, 240);
+            capturedImage = canvas.toDataURL('image/jpeg');
+            previewImg.src = capturedImage;
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            previewContainer.style.display = 'block';
+        });
+
+        retakeBtn.addEventListener('click', () => {
+            capturedImage = null;
+            previewContainer.style.display = 'none';
+            video.style.display = 'block';
+            captureBtn.style.display = 'inline-block';
+        });
+
+        registerBtn.addEventListener('click', async () => {
+            const name = document.getElementById('name').value;
+            const className = document.getElementById('class').value;
+            const section = document.getElementById('section').value;
+            const roll = document.getElementById('roll').value;
+
+            if (!name || !className || !section || !roll || !capturedImage) {
+                showStatus('Please fill all fields and capture a photo.', 'error');
+                return;
+            }
+
+            const data = {
+                name: name,
+                class: className,
+                section: section,
+                roll: roll,
+                image: capturedImage
+            };
+
+            try {
+                registerBtn.disabled = true;
+                registerBtn.innerText = "Registering...";
+                
+                const response = await fetch('http://localhost:5000/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showStatus(result.message, 'success');
+                    // Reset form
+                    document.getElementById('name').value = '';
+                    document.getElementById('class').value = '';
+                    document.getElementById('section').value = '';
+                    document.getElementById('roll').value = '';
+                    retakeBtn.click();
+                } else {
+                    showStatus(result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error connecting to server.', 'error');
+                console.error(error);
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.innerText = "Register Student";
+            }
+        });
+    </script>
+</body>
+</html>

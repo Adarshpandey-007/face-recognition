@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark Attendance</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Live Attendance</h1>
+    </header>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="register.html">Register Student</a>
+        <a href="attendance.html">Mark Attendance</a>
+        <a href="records.html">View Records</a>
+    </nav>
+
+    <div class="container">
+        <div class="video-container">
+            <video id="video" width="640" height="480" autoplay></video>
+            <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="start-btn" style="width: auto; display: inline-block;">Start Recognition</button>
+            <button id="stop-btn" style="width: auto; display: inline-block; background-color: #dc3545; display: none;">Stop Recognition</button>
+        </div>
+
+        <div id="status"></div>
+
+        <h3>Recognized Students (This Session)</h3>
+        <table id="attendance-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Section</th>
+                    <th>Roll</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        initCamera();
+        
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const tableBody = document.querySelector('#attendance-table tbody');
+        
+        let intervalId = null;
+        const recognizedSet = new Set();
+
+        startBtn.addEventListener('click', () => {
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            showStatus('Recognition started...', 'success');
+            
+            intervalId = setInterval(captureAndRecognize, 3000); // Check every 3 seconds
+        });
+
+        stopBtn.addEventListener('click', () => {
+            stopBtn.style.display = 'none';
+            startBtn.style.display = 'inline-block';
+            showStatus('Recognition stopped.', 'success');
+            
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        });
+
+        async function captureAndRecognize() {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            try {
+                const response = await fetch('http://localhost:5000/recognize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+
+                const result = await response.json();
+
+                if (result.recognized && result.recognized.length > 0) {
+                    result.recognized.forEach(student => {
+                        const key = `${student.class}-${student.section}-${student.roll}`;
+                        if (!recognizedSet.has(key)) {
+                            recognizedSet.add(key);
+                            addTableRow(student);
+                            showStatus(`Marked attendance for ${student.name}`, 'success');
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error recognizing face:', error);
+            }
+        }
+
+        function addTableRow(student) {
+            const row = document.createElement('tr');
+            const time = new Date().toLocaleTimeString();
+            row.innerHTML = `
+                <td>${student.name}</td>
+                <td>${student.class}</td>
+                <td>${student.section}</td>
+                <td>${student.roll}</td>
+                <td>${time}</td>
+            `;
+            tableBody.insertBefore(row, tableBody.firstChild);
+        }
+    </script>
+</body>
+</html>
